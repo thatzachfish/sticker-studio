@@ -36,6 +36,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,label.btn:focus-
 .pill{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 12px;font-size:14px;max-width:46vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dot{flex:none;width:9px;height:9px;border-radius:50%;background:var(--muted)}
 .pill[data-state="on"] .dot{background:var(--ok)}
+.pill[data-state="ready"] .dot{background:transparent;box-shadow:inset 0 0 0 2px var(--ok)}
 .pill[data-state="busy"] .dot{background:var(--busy);animation:blink 1s infinite}
 .pill[data-state="err"] .dot{background:var(--err)}
 @keyframes blink{50%{opacity:.25}}
@@ -697,7 +698,12 @@ let device = null, writeChar = null, wantConnected = false, connecting = false, 
 
 function setStatus(state, text){
   const b=$('#connBtn'); b.dataset.state=state; $('#connText').textContent=text;
-  $('#printerInfo').textContent = device ? (state==='on' ? `Connected to ${device.name||'printer'}.` : `${device.name||'Printer'} remembered. ${state==='busy'?'Connecting…':'Not connected right now.'}`) : 'No printer connected yet.';
+  const nm = device && (device.name||'Printer');
+  $('#printerInfo').textContent = !device ? 'No printer connected yet.'
+    : state==='on' ? `Connected to ${nm}.`
+    : state==='ready' ? `${nm} is paired. It rests between prints to save battery, and the app wakes it up when you tap Print.`
+    : state==='busy' ? `Connecting to ${nm}…`
+    : `${nm} remembered. Not connected right now.`;
 }
 function btProblem(e){
   const m = (e && (e.message||'')) + '';
@@ -770,9 +776,9 @@ async function onDisconnect(){
   writeChar = null;
   if(!wantConnected){ setStatus('off', device ? 'Tap to connect' : 'Connect'); return; }
   if(printing) return;
-  setStatus('busy','Reconnecting…');
-  await sleep(700);
-  if(wantConnected && !device.gatt.connected) await connect();
+  // The M02 drops idle Bluetooth links to save battery. Don't fight it:
+  // stay quiet and wake it up again when the next print starts.
+  setStatus('ready','Ready');
 }
 $('#connBtn').addEventListener('click', () => {
   if(device && device.gatt.connected && writeChar){ showTab('print'); return; }
@@ -830,7 +836,7 @@ async function sendBytes(bytes, onProg){
 async function doPrint(){
   if(printing) return;
   if(!S.els.length && S.border==='none'){ toast('The label is empty. Add some text or clipart first.'); return; }
-  if(!(device && device.gatt.connected && writeChar)){ const ok = await connect(); if(!ok) return; }
+  if(!(device && device.gatt.connected && writeChar)){ const ok = await connect(); if(!ok) return; await sleep(300); }
   printing = true; $('#printTop').disabled = true; $('#printBig').disabled = true;
   const job = buildJob(), n = prefs.copies;
   try{
@@ -876,7 +882,7 @@ window.addEventListener('resize', () => { fitView(); schedule(); });
 setStatus('off','Connect');
 if(!navigator.bluetooth) notice('This browser can’t use Bluetooth. Open Sticker Studio in Chrome on your Android phone to print. You can still design here.');
 else if(navigator.bluetooth.getDevices){
-  navigator.bluetooth.getDevices().then(ds => { if(ds && ds.length && !device){ useDevice(ds[0]); setStatus('off','Tap to connect'); } }).catch(()=>{});
+  navigator.bluetooth.getDevices().then(ds => { if(ds && ds.length && !device){ useDevice(ds[0]); wantConnected=true; setStatus('ready','Ready'); } }).catch(()=>{});
 }
 })();
 </script>
