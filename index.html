@@ -233,7 +233,14 @@ const FONTS = [
   ['Courier Prime','Courier'],['Playfair Display','Playfair'],['Fredoka','Fredoka']];
 const FRAMES = [['none','None'],['box','Box'],['round','Rounded'],['pill','Pill']];
 const BGS = [['none','None'],['box','Black box'],['round','Black rounded'],['pill','Black pill']];
-const SHAPES = ['circle','square','rounded','triangle','diamond','pentagon','hexagon','octagon','star','line'];
+const SHAPES = ['circle','square','rounded','triangle','diamond','pentagon','hexagon','octagon','star','line','arrowThick','arrowThin','arrowCurve'];
+const SHAPE_DEF = {
+  line:{fill:'black'},
+  arrowThick:{fill:'black', stretch:0.6},
+  arrowThin:{fill:'black', stretch:0.4, line:5},
+  arrowCurve:{fill:'black', stretch:0.7, line:5}
+};
+const shapeProps = name => Object.assign({type:'shape', shape:name, fill:'outline', line:6, stretch:1}, SHAPE_DEF[name]||{});
 const BORDERS = [['none','None'],['thin','Thin'],['thick','Thick'],['double','Double'],['dashed','Dashed'],['dotted','Dotted'],['rounded','Rounded']];
 const LENGTHS = [20,30,40,50,70,100];
 const STORE = 'm02-sticker-studio-v1';
@@ -445,10 +452,33 @@ function shapePath(c, shape, w, h){
   else if(shape==='pentagon') reg(5,-Math.PI/2);
   else if(shape==='hexagon') reg(6,0);
   else if(shape==='octagon') reg(8,Math.PI/8);
+  else if(shape==='arrowThick'){
+    const hd = Math.min(w*0.45, h*0.9), sh = h*0.22;
+    [[-w/2,-sh],[w/2-hd,-sh],[w/2-hd,-h/2],[w/2,0],[w/2-hd,h/2],[w/2-hd,sh],[-w/2,sh]].forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y)); c.closePath();
+  }
   else if(shape==='star'){ for(let i=0;i<10;i++){ const r=i%2?0.42:1, a=-Math.PI/2+i*Math.PI/5, x=Math.cos(a)*w/2*r, y=Math.sin(a)*h/2*r; i?c.lineTo(x,y):c.moveTo(x,y); } c.closePath(); }
+}
+function drawLineArrow(c, el, b){
+  const w=b.w, h=b.h, lw=Math.max(2, Math.min(el.line, h/2)), col = el.fill==='white' ? '#fff' : '#000';
+  c.strokeStyle=col; c.fillStyle=col; c.lineWidth=lw; c.lineCap='round'; c.lineJoin='round';
+  const head = (T, dir, hl, hw) => {
+    const E = [T[0]-dir[0]*hl, T[1]-dir[1]*hl], n = [-dir[1], dir[0]];
+    c.beginPath(); c.moveTo(T[0],T[1]); c.lineTo(E[0]+n[0]*hw, E[1]+n[1]*hw); c.lineTo(E[0]-n[0]*hw, E[1]-n[1]*hw); c.closePath(); c.fill();
+    return E;
+  };
+  if(el.shape==='arrowThin'){
+    const hl = Math.min(w*0.35, h*0.9), E = head([w/2,0],[1,0],hl,h/2);
+    c.beginPath(); c.moveTo(-w/2+lw/2,0); c.lineTo(E[0]+1,0); c.stroke();
+  } else {
+    const T=[w/2-lw/2,-h*0.18], C2=[w*0.08,h*0.48], S=[-w/2+lw/2,h*0.32], C1=[-w*0.15,-h*0.62];
+    let dx=T[0]-C2[0], dy=T[1]-C2[1]; const L=Math.hypot(dx,dy); dx/=L; dy/=L;
+    const hl = Math.min(w*0.28, h*0.55), E = head(T,[dx,dy],hl,hl*0.62);
+    c.beginPath(); c.moveTo(S[0],S[1]); c.bezierCurveTo(C1[0],C1[1],C2[0],C2[1],E[0]+dx,E[1]+dy); c.stroke();
+  }
 }
 function drawShape(c, el){
   const b = box(el);
+  if(el.shape==='arrowThin' || el.shape==='arrowCurve'){ drawLineArrow(c, el, b); return; }
   if(el.shape==='line'){ c.fillStyle = el.fill==='white' ? '#fff' : '#000'; c.fillRect(-b.w/2,-b.h/2,b.w,b.h); return; }
   if(el.fill==='outline'){
     const lw = Math.max(1, Math.min(el.line, Math.min(b.w,b.h)/2));
@@ -597,7 +627,7 @@ function addCorner(name){
 }
 function addShape(name){
   const {W,H} = dims(), m = Math.min(W,H);
-  addEl({type:'shape', shape:name, fill:name==='line'?'black':'outline', line:6, stretch:1, size: name==='line' ? Math.round(W*0.7) : Math.round(m*0.5)});
+  addEl(Object.assign(shapeProps(name), {size: name==='line' ? Math.round(W*0.7) : name.startsWith('arrow') ? Math.round(Math.min(W*0.6, m*0.9)) : Math.round(m*0.5)}));
 }
 function sizeRange(el){
   const {W,H} = dims(), M = Math.max(W,H);
@@ -716,7 +746,7 @@ function tile(grid, label, paint, onTap){
   const cv=document.createElement('canvas'); cv.width=cv.height=76; paint(cv.getContext('2d'));
   b.appendChild(cv); grid.appendChild(b); b.addEventListener('click', onTap);
 }
-SHAPES.forEach(name => tile($('#shapeGrid'), name, c => { c.translate(38,38); drawShape(c, {type:'shape', shape:name, fill:name==='line'?'black':'outline', line:6, stretch:1, size:name==='line'?60:54}); }, () => addShape(name)));
+SHAPES.forEach(name => tile($('#shapeGrid'), name, c => { c.translate(38,38); const t = shapeProps(name); t.size = name==='line' || name.startsWith('arrow') ? 62 : 54; drawShape(c, t); }, () => addShape(name)));
 Object.keys(CORNERS).forEach(name => tile($('#cornerGrid'), CORNER_NAMES[name], c => paintIcon(c, name, 76), () => addCorner(name)));
 $('#cornerAll').addEventListener('click', () => { cornerMode='all'; syncUI(); });
 $('#cornerOne').addEventListener('click', () => { cornerMode='one'; syncUI(); });
