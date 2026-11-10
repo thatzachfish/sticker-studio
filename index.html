@@ -3,6 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#eceef4">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
 <title>M02 Sticker Studio</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -884,6 +888,7 @@ if(!navigator.bluetooth) notice('This browser can’t use Bluetooth. Open Sticke
 else if(navigator.bluetooth.getDevices){
   navigator.bluetooth.getDevices().then(ds => { if(ds && ds.length && !device){ useDevice(ds[0]); wantConnected=true; setStatus('ready','Ready'); } }).catch(()=>{});
 }
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
 })();
 </script>
 
