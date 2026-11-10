@@ -178,6 +178,12 @@ label.btn{display:inline-flex;justify-content:center}
     <div class="clipgrid" id="cornerGrid"></div>
     <div class="lbl">Clipart</div>
     <div class="clipgrid" id="clipGrid"></div>
+    <div class="lbl">Monsters</div>
+    <div class="seg"><button class="chip" id="monsterNew" type="button">New monsters</button></div>
+    <div id="monsterCtl" hidden class="row"><span class="rl">View</span><span class="seg">
+      <button class="chip" data-mview="full" type="button">Whole</button><button class="chip" data-mview="peek" type="button">Peeking</button><button class="chip" data-mview="face" type="button">Face</button><button class="chip" data-mview="eyes" type="button">Eyes</button><button class="chip" data-mview="mouth" type="button">Mouth</button><button class="chip" data-mview="sign" type="button">Sign</button>
+    </span></div>
+    <div class="clipgrid" id="monsterGrid"></div>
     <div class="lbl">Or any emoji</div>
     <div class="inline"><input type="text" id="emojiIn" maxlength="12" placeholder="🌙 🎹 🍄" aria-label="Emoji to add"><button class="btn" id="emojiAdd" type="button">Add</button></div>
   </section>
@@ -397,6 +403,165 @@ function imageCanvas(el, w, h){
   });
 }
 
+/* ---------- monsters: every seed draws a different cute monster ---------- */
+function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+function monsterTraits(seed){
+  const R = mulberry32(seed), rnd=(a,b)=>a+R()*(b-a), pick=a=>a[Math.floor(R()*a.length)], ch=p=>R()<p;
+  const T = {};
+  T.body = pick(['blob','round','bean','ghost','pear','square','blob','round']);
+  T.w = rnd(58,74); T.h = rnd(52,68);
+  if(T.body==='bean'){ T.w=rnd(48,58); T.h=rnd(64,74); }
+  if(T.body==='round') T.h = T.w*rnd(0.85,1.0);
+  if(T.body==='ghost') T.h = Math.max(T.h, T.w*0.9);
+  T.feet = T.body!=='ghost' && ch(0.85);
+  T.cx = 50; T.cy = 92 - T.h/2 - (T.feet?6:1); T.top = T.cy - T.h/2;
+  T.inverse = ch(0.25);
+  T.bc = T.inverse ? '#000' : '#fff'; T.fc = T.inverse ? '#fff' : '#000';
+  const e = R(); T.eyes = e<0.2 ? 1 : e<0.88 ? 2 : 3;
+  T.eyeStyle = T.inverse ? pick(['pupil','pupil','happy']) : pick(['bead','bead','pupil','pupil','happy']);
+  T.r = T.eyes===1 ? T.w*rnd(0.2,0.24) : T.eyes===2 ? T.w*rnd(0.13,0.17) : T.w*0.11;
+  T.eyeY = T.cy - T.h*(T.body==='bean'||T.body==='ghost' ? 0.16 : 0.1);
+  if(T.eyes===1) T.eyeXs=[[T.cx,T.eyeY]];
+  else if(T.eyes===2){ const d=Math.max(T.r*1.35, T.w*0.2); T.eyeXs=[[T.cx-d,T.eyeY],[T.cx+d,T.eyeY]]; }
+  else { const d=T.r*2.3; T.eyeXs=[[T.cx-d,T.eyeY+T.r*0.3],[T.cx,T.eyeY-T.r*0.5],[T.cx+d,T.eyeY+T.r*0.3]]; }
+  T.eyeSpan = T.eyes===1 ? T.r*2 : (T.eyeXs[T.eyeXs.length-1][0]-T.eyeXs[0][0]) + T.r*2;
+  T.mouth = pick(['smile','open','open','cat','o','grin','smile']);
+  T.teeth = pick(['fangs','buck','none','fangs']);
+  T.fang = ch(0.4);
+  T.mw = T.w*rnd(0.22,0.32);
+  T.mouthY = Math.min(T.eyeY + T.r + T.h*0.12, T.cy + T.h*0.3);
+  T.blush = ch(0.55); T.lashes = T.eyeStyle!=='happy' && ch(0.25);
+  T.topper = pick(['horns','antennae','ears','catEars','sprout','tuft','spikes','none','horns','antennae']);
+  T.arms = pick(['up','down','none','wave','down']);
+  T.spots = ch(0.35);
+  T.belly = !T.spots && ch(0.3) && T.mouthY < T.cy + T.h*0.12;
+  T.spotList = [0,1,2].map(()=>[ (R()<0.5?-1:1)*rnd(0.32,0.44), rnd(0.2,0.4), rnd(3,6) ]);
+  return T;
+}
+function topAt(T, dx){ const k = Math.min(1, Math.abs(2*dx/T.w)); return T.cy - (T.h/2)*Math.sqrt(1-k*k); }
+function mBodyPath(c, T){
+  const {cx,cy,w,h} = T, x=cx-w/2, y=cy-h/2;
+  c.beginPath();
+  if(T.body==='round'||T.body==='bean') c.ellipse(cx,cy,w/2,h/2,0,0,Math.PI*2);
+  else if(T.body==='square') c.roundRect(x,y,w,h,Math.min(w,h)*0.3);
+  else if(T.body==='blob') c.roundRect(x,y,w,h,[w*0.48,w*0.48,w*0.34,w*0.34]);
+  else if(T.body==='pear'){ c.moveTo(cx,y); c.bezierCurveTo(cx+w*0.32,y,cx+w*0.36,cy-h*0.1,cx+w*0.5,cy+h*0.22); c.bezierCurveTo(cx+w*0.58,y+h,cx-w*0.58,y+h,cx-w*0.5,cy+h*0.22); c.bezierCurveTo(cx-w*0.36,cy-h*0.1,cx-w*0.32,y,cx,y); c.closePath(); }
+  else { const r=w/2, n=4, sw=w/n; c.moveTo(x,y+r); c.arc(cx,y+r,r,Math.PI,0); c.lineTo(x+w,y+h); for(let i=0;i<n;i++){ const x1=x+w-i*sw; c.quadraticCurveTo(x1-sw/2,y+h-sw*0.7,x1-sw,y+h); } c.closePath(); }
+}
+function mPart(c, T, pathFn){ c.beginPath(); pathFn(); c.fillStyle=T.bc; c.fill(); c.strokeStyle='#000'; c.stroke(); }
+function mEye(c, T, x, y, r, side){
+  if(T.eyeStyle==='happy'){ c.strokeStyle=T.fc; c.lineWidth=T.lw*1.3; c.beginPath(); c.arc(x,y+r*0.35,r*0.7,Math.PI*1.12,Math.PI*1.88); c.stroke(); c.lineWidth=T.lw; return; }
+  let pr=r, py=y;
+  if(T.eyeStyle==='pupil'){ c.fillStyle='#fff'; circ(c,x,y,r); if(!T.inverse){ c.strokeStyle='#000'; c.beginPath(); c.arc(x,y,r,0,Math.PI*2); c.stroke(); } pr=r*(T.inverse?0.64:0.74); py=y+r*(T.inverse?0.2:0.14); }
+  c.fillStyle='#000'; circ(c,x,py,pr);
+  c.fillStyle='#fff'; circ(c,x-pr*0.32,py-pr*0.34,pr*0.34); circ(c,x+pr*0.36,py+pr*0.3,pr*0.15);
+  if(T.lashes && side){ c.strokeStyle=T.fc; c.lineWidth=T.lw*0.8; for(const a of [0.55,0.95]){ const ang=-Math.PI/2+side*a; c.beginPath(); c.moveTo(x+Math.cos(ang)*r*1.02,y+Math.sin(ang)*r*1.02); c.lineTo(x+Math.cos(ang)*r*1.38,y+Math.sin(ang)*r*1.38); c.stroke(); } c.lineWidth=T.lw; }
+}
+function mMouth(c, T, closeUp){
+  const cx=T.cx, y=T.mouthY, mw=T.mw;
+  let type = T.mouth, teeth = T.teeth;
+  if(closeUp){ if(type!=='open' && type!=='grin') type='open'; if(teeth==='none') teeth='fangs'; }
+  c.strokeStyle=T.fc; c.fillStyle=T.fc; c.lineWidth=T.lw;
+  if(type==='smile'){
+    c.beginPath(); c.arc(cx,y-mw*0.35,mw*0.5,0.2*Math.PI,0.8*Math.PI); c.stroke();
+    if(T.fang){ const fx=cx+mw*0.22, fy=y+mw*0.09; c.beginPath(); c.moveTo(fx-mw*0.09,fy-1); c.lineTo(fx+mw*0.09,fy-1); c.lineTo(fx,fy+mw*0.17); c.closePath(); c.fillStyle='#fff'; c.fill(); c.strokeStyle='#000'; c.lineWidth=T.lw*0.6; c.stroke(); c.lineWidth=T.lw; }
+    return;
+  }
+  if(type==='cat'){ c.beginPath(); c.moveTo(cx-mw*0.5,y-1); c.quadraticCurveTo(cx-mw*0.25,y+mw*0.35,cx,y); c.quadraticCurveTo(cx+mw*0.25,y+mw*0.35,cx+mw*0.5,y-1); c.stroke(); return; }
+  if(type==='o'){ c.beginPath(); c.ellipse(cx,y,mw*0.16,mw*0.2,0,0,Math.PI*2); c.fill(); return; }
+  const grin = type==='grin', mW = grin ? mw*1.15 : mw, md = grin ? mw*0.45 : mw*0.6, top = y - md*0.3;
+  c.save();
+  c.beginPath();
+  if(grin) c.roundRect(cx-mW/2, top, mW, md, md*0.5);
+  else { c.moveTo(cx-mW/2,top); c.lineTo(cx+mW/2,top); c.bezierCurveTo(cx+mW/2,top+md*1.25,cx-mW/2,top+md*1.25,cx-mW/2,top); c.closePath(); }
+  c.fillStyle='#000'; c.fill();
+  if(T.inverse){ c.strokeStyle='#fff'; c.lineWidth=T.lw*0.8; c.stroke(); }
+  c.clip();
+  c.fillStyle='#fff'; ell(c, cx+mW*0.1, top+md*0.95, mW*0.28, md*0.34, 0);
+  c.strokeStyle='#000'; c.lineWidth=T.lw*0.6; c.beginPath(); c.moveTo(cx+mW*0.1, top+md*0.7); c.lineTo(cx+mW*0.1, top+md*0.9); c.stroke();
+  c.fillStyle='#fff';
+  if(grin){ const n=5, tw=mW/n; for(let i=0;i<n;i++){ c.beginPath(); c.roundRect(cx-mW/2+i*tw+tw*0.08, top-2, tw*0.84, md*0.32+2, tw*0.25); c.fill(); } }
+  else if(teeth==='fangs'){ for(const sx of [-1,1]){ const fx=cx+sx*mW*0.28; c.beginPath(); c.moveTo(fx-mW*0.09,top-1); c.lineTo(fx+mW*0.09,top-1); c.lineTo(fx,top+md*0.32); c.closePath(); c.fill(); } }
+  else if(teeth==='buck'){ c.beginPath(); c.roundRect(cx-mW*0.17,top-2,mW*0.16,md*0.34,mW*0.04); c.roundRect(cx+mW*0.01,top-2,mW*0.16,md*0.34,mW*0.04); c.fill(); }
+  c.restore(); c.lineWidth=T.lw;
+}
+function mDraw(c, T, closeUp){
+  const {cx,cy,w,h} = T;
+  c.lineWidth=T.lw; c.lineCap='round'; c.lineJoin='round';
+  if(T.feet) for(const s of [-1,1]) mPart(c,T,()=>c.ellipse(cx+s*w*0.2, cy+h/2+1, w*0.13, 6, 0, 0, Math.PI*2));
+  const armUp = s => T.arms==='up' || (T.arms==='wave' && s>0);
+  if(T.arms!=='none') for(const s of [-1,1]){
+    const ax=cx+s*(w/2-2), ay=cy+h*0.1;
+    if(armUp(s)) mPart(c,T,()=>c.ellipse(ax+s*6, ay-11, 10, 5.5, -s*0.95, 0, Math.PI*2));
+    else mPart(c,T,()=>c.ellipse(ax+s*5, ay+6, 10, 5.5, s*0.6, 0, Math.PI*2));
+  }
+  const tp = T.topper;
+  if(tp==='horns') for(const s of [-1,1]){ const bx=cx+s*w*0.24, by=topAt(T,w*0.24)+5; mPart(c,T,()=>{ c.moveTo(bx-5,by); c.quadraticCurveTo(bx-3,by-12,bx+s*5,by-17); c.quadraticCurveTo(bx+4,by-8,bx+5,by); c.closePath(); }); }
+  else if(tp==='antennae') for(const s of [-1,1]){ const bx=cx+s*w*0.12, by=topAt(T,w*0.12)+3, ex=cx+s*w*0.3, ey=T.top-15; c.strokeStyle='#000'; c.beginPath(); c.moveTo(bx,by); c.quadraticCurveTo(bx+s*2,ey+4,ex,ey); c.stroke(); c.fillStyle='#000'; circ(c,ex,ey,4.2); }
+  else if(tp==='ears') for(const s of [-1,1]){ const bx=cx+s*w*0.3, by=topAt(T,w*0.3)+3, r=w*0.12; mPart(c,T,()=>c.arc(bx,by,r,0,Math.PI*2)); c.strokeStyle=T.fc; c.beginPath(); c.arc(bx,by,r*0.5,0,Math.PI*2); c.stroke(); c.strokeStyle='#000'; }
+  else if(tp==='catEars') for(const s of [-1,1]){ const bx=cx+s*w*0.27, by=topAt(T,w*0.27)+5; mPart(c,T,()=>{ c.moveTo(bx-8,by); c.lineTo(bx+s*3,by-16); c.lineTo(bx+8,by); c.closePath(); }); }
+  else if(tp==='spikes') for(const dx of [-0.24,0,0.24]){ const bx=cx+dx*w, by=topAt(T,dx*w)+4; mPart(c,T,()=>{ c.moveTo(bx-6,by); c.lineTo(bx,by-11); c.lineTo(bx+6,by); c.closePath(); }); }
+  mBodyPath(c,T); c.fillStyle=T.bc; c.fill(); c.strokeStyle='#000'; c.stroke();
+  if(tp==='sprout'){ c.strokeStyle='#000'; c.beginPath(); c.moveTo(cx,T.top+1); c.lineTo(cx,T.top-10); c.stroke(); c.fillStyle='#000'; ell(c,cx-5,T.top-12,6,3,-0.5); ell(c,cx+5,T.top-12,6,3,0.5); }
+  if(tp==='tuft'){ c.strokeStyle='#000'; for(const k of [-1,0,1]){ c.beginPath(); c.arc(cx+k*5,T.top-3,3.5,Math.PI*0.9,Math.PI*2.2); c.stroke(); } }
+  if(T.spots || T.belly){
+    c.save(); mBodyPath(c,T); c.clip(); c.fillStyle=T.fc; c.strokeStyle=T.fc;
+    if(T.spots) T.spotList.forEach(([dx,dy,r]) => circ(c, cx+dx*w, cy+dy*h, r));
+    if(T.belly){ c.lineWidth=T.lw*0.7; c.beginPath(); c.ellipse(cx, cy+h*0.3, w*0.25, h*0.17, 0, 0, Math.PI*2); c.stroke(); c.lineWidth=T.lw; }
+    c.restore();
+  }
+  T.eyeXs.forEach(([x,y],i) => mEye(c,T,x,y,T.r, T.eyes===1?0 : i===0?-1 : i===T.eyeXs.length-1?1:0));
+  if(T.blush){
+    c.strokeStyle=T.fc; c.lineWidth=T.lw*0.5;
+    const ex = T.eyes===1 ? T.r*1.1 : Math.abs(T.eyeXs[0][0]-cx);
+    for(const s of [-1,1]){ const bx=cx+s*(ex+T.r*0.3), by=T.mouthY-1; for(let k=-1;k<=1;k++){ c.beginPath(); c.moveTo(bx+k*3.2-1.6,by+2); c.lineTo(bx+k*3.2+1.6,by-2); c.stroke(); } }
+    c.lineWidth=T.lw;
+  }
+  mMouth(c,T,closeUp);
+}
+function drawMonster(c, seed, view){
+  const T = monsterTraits(seed);
+  c.save();
+  if(view==='peek'){
+    const s=1.3; c.save(); c.beginPath(); c.rect(0,0,100,100); c.clip();
+    c.translate(50,30); c.scale(s,s); c.translate(-T.cx,-T.top); T.lw=3/s*1.2; mDraw(c,T,false); c.restore();
+    c.fillStyle='#000'; c.fillRect(0,84,100,16);
+    c.lineWidth=2.5; c.strokeStyle='#000'; c.fillStyle=T.bc;
+    for(const x of [50-T.w*0.42, 50+T.w*0.42]){ c.beginPath(); c.roundRect(x-9,77,18,11,5.5); c.fill(); c.stroke(); if(T.inverse){ c.strokeStyle='#fff'; } c.beginPath(); c.moveTo(x-3,80); c.lineTo(x-3,86); c.moveTo(x+3,80); c.lineTo(x+3,86); c.stroke(); c.strokeStyle='#000'; }
+  } else if(view==='sign'){
+    const s=0.78; T.arms='none'; T.lw=3/s;
+    c.save(); c.beginPath(); c.rect(0,0,100,100); c.clip();
+    c.translate(50,66); c.scale(s,s); c.translate(-T.cx,-T.eyeY);
+    const shY = T.cy, sx = T.w/2-3;
+    for(const k of [-1,1]){
+      const hx = T.cx + k*(28/s), hy = T.eyeY + (49-66)/s;
+      c.lineCap='round'; c.strokeStyle='#000'; c.lineWidth=11; c.beginPath(); c.moveTo(T.cx+k*sx, shY); c.lineTo(hx, hy); c.stroke();
+      c.strokeStyle=T.bc; c.lineWidth=5; c.stroke();
+    }
+    mDraw(c,T,false); c.restore();
+    c.lineWidth=3.5; c.strokeStyle='#000'; c.fillStyle='#fff';
+    c.beginPath(); c.roundRect(6,4,88,46,6); c.fill(); c.stroke();
+    c.lineWidth=1.2; c.beginPath(); c.roundRect(10,8,80,38,3); c.stroke();
+    c.lineWidth=2.5; c.fillStyle=T.bc;
+    for(const k of [-1,1]){ c.beginPath(); c.arc(50+k*28,49,5.5,0,Math.PI*2); c.fill(); c.stroke(); }
+  } else if(view==='face' || view==='eyes' || view==='mouth'){
+    let px, py, s, frame;
+    if(view==='face'){ px=T.cx; py=(T.eyeY+T.mouthY)/2; s=Math.min(2.0, 80/T.w); frame=()=>c.arc(50,50,47,0,Math.PI*2); }
+    else if(view==='eyes'){ px=T.cx; py=T.eyeY - (T.eyes===3?T.r*0.1:0); s=Math.min(3.4, 84/(T.eyeSpan+10)); frame=()=>c.roundRect(3,22,94,56,28); }
+    else { px=T.cx; py=T.mouthY+T.mw*0.15; s=Math.min(3.2, 70/T.mw); frame=()=>c.arc(50,50,47,0,Math.PI*2); }
+    c.save(); c.beginPath(); frame(); c.fillStyle='#fff'; c.fill(); c.clip();
+    c.translate(50,50); c.scale(s,s); c.translate(-px,-py); T.lw=3/s*1.6;
+    c.fillStyle=T.bc; c.fillRect(T.cx-T.w, T.top-40, T.w*2, T.h+80);
+    mDraw(c,T,view==='mouth'); c.restore();
+    c.beginPath(); frame(); c.lineWidth=4; c.strokeStyle='#000'; c.stroke();
+  } else { T.lw=3; mDraw(c,T,false); }
+  c.restore();
+}
+function monsterCanvas(seed, view, size){
+  const s = Math.max(8, Math.round(size));
+  return cached('m|'+seed+'|'+view+'|'+s, () => { const cv=document.createElement('canvas'); cv.width=cv.height=s; const c=cv.getContext('2d'); c.scale(s/100,s/100); drawMonster(c, seed, view); return cv; });
+}
+
 /* ---------- text ---------- */
 const mctx = document.createElement('canvas').getContext('2d');
 const fontStr = (el,size) => `${el.italic?'italic ':''}${el.bold?700:400} ${Math.round(size)}px "${el.font}", sans-serif`;
@@ -495,6 +660,7 @@ function drawEl(c, el){
   c.fillStyle='#000'; c.strokeStyle='#000'; c.setLineDash([]);
   if(el.type==='text') drawText(c, el);
   else if(el.type==='shape') drawShape(c, el);
+  else if(el.type==='monster') c.drawImage(monsterCanvas(el.seed, el.view, el.size), -el.size/2, -el.size/2, el.size, el.size);
   else if(el.type==='clip') c.drawImage(iconCanvas(el.name, el.size), -el.size/2, -el.size/2, el.size, el.size);
   else if(el.type==='emoji'){ c.imageSmoothingEnabled=false; c.drawImage(emojiCanvas(el.ch, el.size), -el.size/2, -el.size/2, el.size, el.size); c.imageSmoothingEnabled=true; }
   else if(el.type==='image'){ const b=box(el), ic=imageCanvas(el,b.w,b.h); if(ic){ c.imageSmoothingEnabled=false; c.drawImage(ic,-b.w/2,-b.h/2,b.w,b.h); c.imageSmoothingEnabled=true; } }
@@ -754,6 +920,27 @@ function setShape(k, v){ const el=getSel(); if(el && el.type==='shape'){ el[k]=v
 $$('[data-fill]').forEach(b => b.addEventListener('click', () => setShape('fill', b.dataset.fill)));
 $('#shLine').addEventListener('input', e => setShape('line', +e.target.value));
 $('#shStretch').addEventListener('input', e => { let v=+e.target.value; if(Math.abs(v)<5) v=0; setShape('stretch', Math.pow(2, v/50)); });
+const MVIEWS = ['full','full','full','peek','face','eyes','mouth','face','sign','sign'];
+function addMonster(seed, view){
+  const {W,H} = dims();
+  const size = Math.round(Math.min(W,H)*(view==='sign' ? 0.9 : 0.6));
+  const m = addEl({type:'monster', seed, view, size});
+  if(view==='sign'){
+    addEl(Object.assign({}, textDefaults, {type:'text', text:'Hello!', color:'black', bg:'none', frame:'none', size:Math.round(size*0.13), x:m.x, y:m.y-size*0.23}));
+    showTab('text'); txt.focus(); txt.select();
+  }
+}
+function fillMonsters(){
+  const g = $('#monsterGrid'); g.innerHTML='';
+  const views = MVIEWS.slice().sort(()=>Math.random()-0.5);
+  views.forEach(view => {
+    const seed = Math.floor(Math.random()*2147483647);
+    tile(g, 'monster', c => { c.scale(0.76,0.76); drawMonster(c, seed, view); }, () => addMonster(seed, view));
+  });
+}
+fillMonsters();
+$('#monsterNew').addEventListener('click', fillMonsters);
+$$('[data-mview]').forEach(b => b.addEventListener('click', () => { const el=getSel(); if(el && el.type==='monster'){ el.view=b.dataset.mview; syncUI(); render(); commit(); } }));
 const clipGrid = $('#clipGrid');
 Object.keys(ICONS).forEach(name => {
   const b=document.createElement('button'); b.type='button'; b.className='clipbtn'; b.setAttribute('aria-label','Add '+name);
@@ -869,6 +1056,9 @@ function syncUI(selChanged, switchTab){
   $$('[data-bg]').forEach(b => press(b, b.dataset.bg===(t.bg||'none')));
   $('#whiteHint').hidden = !(t.color==='white' && (!t.bg || t.bg==='none'));
   press($('#cornerAll'), cornerMode==='all'); press($('#cornerOne'), cornerMode==='one');
+  const isMon = el && el.type==='monster';
+  $('#monsterCtl').hidden = !isMon;
+  if(isMon) $$('[data-mview]').forEach(b => press(b, b.dataset.mview===el.view));
   const isShape = el && el.type==='shape';
   $('#shapeCtl').hidden = !isShape;
   if(isShape){
