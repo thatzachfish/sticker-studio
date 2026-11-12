@@ -89,8 +89,8 @@ input[type=range]{flex:1;min-width:0;accent-color:var(--accent);height:28px}
 .chip.sq{border-radius:10px;min-width:42px}
 .seg{display:flex;flex-wrap:wrap;gap:6px}
 
-.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:4px;margin-top:8px}
-.tab{border:0;background:transparent;border-radius:10px;padding:9px 2px;font-size:15px;color:var(--muted);font-weight:500}
+.tabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:4px;margin-top:8px}
+.tab{border:0;background:transparent;border-radius:10px;padding:9px 0;font-size:14.5px;color:var(--muted);font-weight:500}
 .tab[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
 .lbl{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:-6px}
@@ -99,10 +99,20 @@ textarea{width:100%;box-sizing:border-box;min-height:76px;font:inherit;font-size
 .fontchip{flex:none;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:8px 14px;font-size:21px;line-height:1.2}
 .fontchip[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 2px var(--accent)}
 .clipgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:8px}
+.savegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px}
+.savecard{position:relative;display:grid;gap:4px;min-width:0}
+.savecard .thumb{width:100%;aspect-ratio:1;border:1px solid var(--line);border-radius:12px;background:#fff;display:grid;place-items:center;padding:6px;box-sizing:border-box}
+.savecard .thumb img{max-width:100%;max-height:100%;image-rendering:pixelated;box-shadow:0 0 0 1px rgba(0,0,0,.12)}
+.savecard[data-current="true"] .thumb{border-color:var(--accent);box-shadow:inset 0 0 0 2px var(--accent)}
+.savecard .nm{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.savecard .dt{font-size:12px;color:var(--muted)}
+.savecard .x{position:absolute;top:-6px;right:-6px;width:30px;height:30px;border-radius:50%;border:2px solid var(--surface);background:var(--muted);color:var(--surface);font-size:14px;line-height:1;padding:0}
+.savecard .x[data-armed="true"]{background:var(--err);color:var(--on-err);width:auto;padding:0 10px;border-radius:15px}
+.empty{border:1px dashed var(--line);border-radius:12px;padding:16px;text-align:center;color:var(--muted);font-size:15px;line-height:1.4}
 .clipbtn{aspect-ratio:1;max-width:100%;border:1px solid var(--line);border-radius:12px;background:#fff;display:grid;place-items:center;padding:0}
 .clipbtn canvas{width:38px;height:38px}
 .inline{display:flex;gap:8px}
-.inline input[type=text]{flex:1;min-width:0;font:inherit;font-size:22px;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.inline input[type=text]{flex:1;min-width:0;font:inherit;font-size:18px;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
 label.btn{display:inline-flex;justify-content:center}
 .stepper{display:flex;align-items:center;gap:10px}
 .stepper output{min-width:28px;text-align:center;font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
@@ -153,9 +163,10 @@ label.btn{display:inline-flex;justify-content:center}
 
   <nav class="tabs" role="tablist">
     <button class="tab" role="tab" data-tab="text" aria-selected="true" type="button">Text</button>
-    <button class="tab" role="tab" data-tab="clip" aria-selected="false" type="button">Clipart</button>
+    <button class="tab" role="tab" data-tab="clip" aria-selected="false" type="button">Art</button>
     <button class="tab" role="tab" data-tab="photo" aria-selected="false" type="button">Photo</button>
     <button class="tab" role="tab" data-tab="label" aria-selected="false" type="button">Label</button>
+    <button class="tab" role="tab" data-tab="saved" aria-selected="false" type="button">Saved</button>
     <button class="tab" role="tab" data-tab="print" aria-selected="false" type="button">Print</button>
   </nav>
 
@@ -186,6 +197,7 @@ label.btn{display:inline-flex;justify-content:center}
 
   <section class="panel" data-panel="clip" hidden>
     <div class="lbl">Shapes</div>
+    <div class="seg"><button class="chip" data-newfill="outline" type="button">Outline</button><button class="chip" data-newfill="black" type="button">Filled</button></div>
     <div class="clipgrid" id="shapeGrid"></div>
     <div id="shapeCtl" hidden style="display:grid;gap:10px">
       <div class="row"><span class="rl">Fill</span><span class="seg"><button class="chip" data-fill="outline" type="button">Outline</button><button class="chip" data-fill="black" type="button">Black</button><button class="chip" data-fill="white" type="button">White</button></span></div>
@@ -228,6 +240,16 @@ label.btn{display:inline-flex;justify-content:center}
     <p class="hint">The M02 prints 48 mm across (384 dots at 203 dpi). Wide labels are turned sideways when printed, so they come out as a long strip.</p>
   </section>
 
+  <section class="panel" data-panel="saved" hidden>
+    <div class="inline"><input type="text" id="saveName" maxlength="40" placeholder="Name this design" aria-label="Design name"><button class="btn primary" id="saveBtn" type="button">Save</button></div>
+    <div class="seg"><button class="chip" id="saveNewBtn" type="button" hidden>Save as a new copy</button><button class="chip" id="newDesignBtn" type="button">+ Start a new label</button></div>
+    <p class="hint" id="saveState"></p>
+    <div class="lbl">Your designs</div>
+    <div class="savegrid" id="saveGrid"></div>
+    <div class="lbl">Backup</div>
+    <p class="hint">Designs are kept on this phone, inside the app. Download a backup file now and then so you never lose them.</p>
+    <div class="seg"><button class="chip" id="backupBtn" type="button">Download backup</button><label class="chip" for="restoreIn" style="cursor:pointer">Restore from backup<input type="file" id="restoreIn" accept=".json,application/json" hidden></label></div>
+  </section>
   <section class="panel" data-panel="print" hidden>
     <div class="row"><span class="rl">Copies</span><span class="stepper"><button class="chip sq" id="cMinus" type="button" aria-label="Fewer copies">−</button><output id="cOut">1</output><button class="chip sq" id="cPlus" type="button" aria-label="More copies">+</button></span></div>
     <div class="row"><label for="gapRange">Space after</label><input type="range" id="gapRange" min="0" max="20" step="1"><output id="gapOut"></output></div>
@@ -266,7 +288,8 @@ const SHAPE_DEF = {
   arrowThin:{fill:'black', stretch:0.4, line:5},
   arrowCurve:{fill:'black', stretch:0.7, line:5}
 };
-const shapeProps = name => Object.assign({type:'shape', shape:name, fill:'outline', line:6, stretch:1}, SHAPE_DEF[name]||{});
+let shapeFill = 'outline';
+const shapeProps = name => Object.assign({type:'shape', shape:name, fill:shapeFill, line:6, stretch:1}, SHAPE_DEF[name]||{}, (name==='arrowThick') ? {fill: shapeFill==='outline' ? 'outline' : 'black'} : {});
 const BORDERS = [['none','None'],['thin','Thin'],['thick','Thick'],['double','Double'],['dashed','Dashed'],['dotted','Dotted'],['rounded','Rounded']];
 const LENGTHS = [20,30,40,48,70,100];
 const SQUARE_MM = 48;
@@ -315,6 +338,33 @@ const ICONS = {
   bubble(c,cut){c.beginPath();c.roundRect(4,8,92,64,16);c.fill();poly(c,[[22,68],[16,96],[46,68]]);cut(()=>{c.beginPath();c.roundRect(12,16,76,48,10);c.fill();});},
   arrow(c){poly(c,[[4,40],[58,40],[58,16],[96,50],[58,84],[58,60],[4,60]]);},
   check(c){c.lineWidth=14;c.lineCap='round';c.lineJoin='round';c.beginPath();c.moveTo(12,54);c.lineTo(38,80);c.lineTo(88,22);c.stroke();},
+  yarnBall(c){
+    c.lineCap='round'; c.lineJoin='round';
+    c.lineWidth=4; c.beginPath(); c.moveTo(70,78); c.bezierCurveTo(84,90,74,98,88,96); c.bezierCurveTo(98,94,92,82,98,78); c.stroke();
+    c.fillStyle='#fff'; c.beginPath(); c.arc(44,46,38,0,Math.PI*2); c.fill();
+    c.save(); c.beginPath(); c.arc(44,46,38,0,Math.PI*2); c.clip();
+    c.lineWidth=3.2;
+    for(const [a,ry] of [[-0.5,10],[-0.5,22],[-0.5,34],[0.9,16],[0.9,30],[2.2,24]]){ c.beginPath(); c.ellipse(44,46,46,ry,a,0,Math.PI*2); c.stroke(); }
+    c.restore();
+    c.lineWidth=5.5; c.beginPath(); c.arc(44,46,38,0,Math.PI*2); c.stroke();
+  },
+  stringPiece(c){
+    c.lineCap='round'; c.lineJoin='round'; c.lineWidth=5;
+    c.beginPath(); c.moveTo(4,74);
+    c.bezierCurveTo(18,44,34,40,44,60);
+    c.bezierCurveTo(52,78,72,74,66,52);
+    c.bezierCurveTo(60,34,40,46,54,62);
+    c.bezierCurveTo(66,76,82,34,96,26); c.stroke();
+    c.fillStyle='#000'; circ(c,4,74,4); circ(c,96,26,4);
+  },
+  tangle(c){
+    c.lineCap='round'; c.lineJoin='round'; c.lineWidth=3.4;
+    c.beginPath(); c.moveTo(24,74); c.quadraticCurveTo(10,84,4,96); c.stroke();
+    c.beginPath(); c.moveTo(74,26); c.quadraticCurveTo(90,22,96,6); c.stroke();
+    for(let i=0;i<8;i++){
+      c.beginPath(); c.ellipse(50+Math.cos(i*2.3)*9, 50+Math.sin(i*1.7)*8, 32-i*2.2, 12+i*2, i*0.83, 0, Math.PI*2); c.stroke();
+    }
+  },
   smile(c){c.lineWidth=8;c.beginPath();c.arc(50,50,42,0,Math.PI*2);c.stroke();circ(c,35,40,6);circ(c,65,40,6);c.lineCap='round';c.lineWidth=7;c.beginPath();c.arc(50,52,24,0.18*Math.PI,0.82*Math.PI);c.stroke();}
 };
 
@@ -766,7 +816,7 @@ function commit(){
 function save(){
   try{
     const used = {}; S.els.forEach(e => { if(e.type==='image' && images[e.imgId]) used[e.imgId] = images[e.imgId].src; });
-    localStorage.setItem(STORE, JSON.stringify({v:2, design:JSON.parse(snapshot()), images:used, textDefaults, prefs}));
+    localStorage.setItem(STORE, JSON.stringify({v:2, design:JSON.parse(snapshot()), images:used, textDefaults, prefs, openId:openDesign.id, openName:openDesign.name}));
   }catch(e){}
 }
 function applySnapshot(str){
@@ -953,7 +1003,17 @@ function tile(grid, label, paint, onTap){
   const cv=document.createElement('canvas'); cv.width=cv.height=76; paint(cv.getContext('2d'));
   b.appendChild(cv); grid.appendChild(b); b.addEventListener('click', onTap);
 }
-SHAPES.forEach(name => tile($('#shapeGrid'), name, c => { c.translate(38,38); const t = shapeProps(name); t.size = name==='line' || name.startsWith('arrow') ? 62 : 54; drawShape(c, t); }, () => addShape(name)));
+function drawShapeTiles(){
+  $('#shapeGrid').innerHTML = '';
+  SHAPES.forEach(name => tile($('#shapeGrid'), name, c => { c.translate(38,38); const t = shapeProps(name); t.size = name==='line' || name.startsWith('arrow') ? 62 : 54; drawShape(c, t); }, () => addShape(name)));
+  $$('[data-newfill]').forEach(b => press(b, b.dataset.newfill===shapeFill));
+}
+drawShapeTiles();
+$$('[data-newfill]').forEach(b => b.addEventListener('click', () => {
+  shapeFill = b.dataset.newfill; drawShapeTiles();
+  const el = getSel();
+  if(el && el.type==='shape' && !['line','arrowThin','arrowCurve'].includes(el.shape)){ el.fill = shapeFill; syncUI(); render(); commit(); }
+}));
 Object.keys(CORNERS).forEach(name => tile($('#cornerGrid'), CORNER_NAMES[name], c => paintIcon(c, name, 76), () => addCorner(name)));
 $('#cornerAll').addEventListener('click', () => { cornerMode='all'; syncUI(); });
 $('#cornerOne').addEventListener('click', () => { cornerMode='one'; syncUI(); });
@@ -1296,8 +1356,139 @@ async function doPrint(){
 $('#printTop').addEventListener('click', doPrint);
 $('#printBig').addEventListener('click', doPrint);
 
+/* ---------- saved designs (stored in the phone's browser database) ---------- */
+const DB = (() => {
+  let dbp = null;
+  const open = () => dbp || (dbp = new Promise((res, rej) => {
+    const r = indexedDB.open('sticker-studio', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('designs', {keyPath:'id'});
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  }));
+  const tx = async (mode, fn) => { const db = await open(); return new Promise((res, rej) => { const t = db.transaction('designs', mode); const st = t.objectStore('designs'); const out = fn(st); t.oncomplete = () => res(out && out.result); t.onerror = () => rej(t.error); }); };
+  return {
+    all: () => tx('readonly', st => st.getAll()),
+    put: d => tx('readwrite', st => st.put(d)),
+    del: id => tx('readwrite', st => st.delete(id))
+  };
+})();
+try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){}
+
+function currentDesign(){
+  const used = {}; S.els.forEach(e => { if(e.type==='image' && images[e.imgId]) used[e.imgId] = images[e.imgId].src; });
+  return {design: JSON.parse(snapshot()), images: used};
+}
+function makeThumb(){
+  render();
+  const max = 200, k = Math.min(max/out.width, max/out.height);
+  const c = document.createElement('canvas'); c.width = Math.round(out.width*k); c.height = Math.round(out.height*k);
+  const x = c.getContext('2d'); x.imageSmoothingEnabled = true; x.drawImage(out, 0, 0, c.width, c.height);
+  return c.toDataURL('image/png');
+}
+function suggestName(){
+  const t = S.els.find(e => e.type==='text' && e.text.trim());
+  return t ? t.text.trim().split('\n')[0].slice(0,30) : '';
+}
+let savedList = [];
+async function refreshSaved(){
+  try{ savedList = (await DB.all()) || []; }catch(e){ savedList = []; }
+  savedList.sort((a,b) => b.updated - a.updated);
+  if(openDesign.id && !savedList.some(d => d.id===openDesign.id)) openDesign = {id:null, name:''};
+  drawSaved();
+}
+function drawSaved(){
+  const g = $('#saveGrid'); g.innerHTML = '';
+  if(!savedList.length){ g.innerHTML = '<div class="empty" style="grid-column:1/-1">No saved designs yet. Name your label above and tap Save.</div>'; }
+  savedList.forEach(d => {
+    const card = document.createElement('div'); card.className = 'savecard'; card.dataset.current = d.id===openDesign.id ? 'true' : 'false';
+    const th = document.createElement('button'); th.type='button'; th.className='thumb'; th.setAttribute('aria-label','Open '+d.name);
+    const im = document.createElement('img'); im.src = d.thumb; im.alt = ''; th.appendChild(im);
+    const nm = document.createElement('div'); nm.className='nm'; nm.textContent = d.name;
+    const dt = document.createElement('div'); dt.className='dt'; dt.textContent = new Date(d.updated).toLocaleDateString(undefined,{month:'short',day:'numeric'});
+    const x = document.createElement('button'); x.type='button'; x.className='x'; x.textContent='✕'; x.setAttribute('aria-label','Delete '+d.name);
+    let armT = 0;
+    x.addEventListener('click', async () => {
+      if(x.dataset.armed!=='true'){ x.dataset.armed='true'; x.textContent='Delete?'; armT = setTimeout(() => { x.dataset.armed='false'; x.textContent='✕'; }, 3000); return; }
+      clearTimeout(armT);
+      try{ await DB.del(d.id); toast(`Deleted “${d.name}”.`); }catch(e){ toast('Could not delete that design.'); }
+      if(openDesign.id===d.id){ openDesign = {id:null, name:''}; save(); }
+      refreshSaved(); syncSaveUI();
+    });
+    th.addEventListener('click', () => openSaved(d));
+    card.append(th, x, nm, dt); g.appendChild(card);
+  });
+}
+function syncSaveUI(){
+  const nameIn = $('#saveName');
+  if(document.activeElement !== nameIn) nameIn.value = openDesign.id ? openDesign.name : '';
+  nameIn.placeholder = suggestName() || 'Name this design';
+  $('#saveBtn').textContent = openDesign.id ? 'Save changes' : 'Save';
+  $('#saveNewBtn').hidden = !openDesign.id;
+  $('#saveState').textContent = openDesign.id ? `Working on “${openDesign.name}”.` : 'This label is not saved yet.';
+}
+async function saveDesign(asNew){
+  const name = ($('#saveName').value.trim() || suggestName() || `Sticker ${savedList.length+1}`).slice(0,40);
+  const now = Date.now();
+  const existing = !asNew && openDesign.id && savedList.find(d => d.id===openDesign.id);
+  const rec = Object.assign({id: existing ? existing.id : 'd'+now.toString(36)+Math.random().toString(36).slice(2,6), name, created: existing ? existing.created : now, updated: now, thumb: makeThumb()}, currentDesign());
+  try{
+    await DB.put(rec);
+    openDesign = {id:rec.id, name}; save();
+    $('#saveName').blur();
+    toast(existing ? `Saved changes to “${name}”.` : `Saved “${name}”.`);
+  }catch(e){ toast('Could not save. Your phone may be low on space.', 5000); }
+  await refreshSaved(); syncSaveUI();
+}
+function loadDesignData(d){
+  Object.entries(d.images||{}).forEach(([id,src]) => { if(!images[id]) addImageSrc(id, src); });
+  applySnapshot(JSON.stringify(d.design)); selId = null;
+  cache.clear(); fitView(); syncUI(true); render(); commit();
+}
+function openSaved(d){
+  loadDesignData(d);
+  openDesign = {id:d.id, name:d.name}; save();
+  syncSaveUI(); drawSaved();
+  toast(`Opened “${d.name}”. Undo goes back to what you had before.`, 3500);
+}
+$('#saveBtn').addEventListener('click', () => saveDesign(false));
+$('#saveNewBtn').addEventListener('click', () => { if($('#saveName').value.trim()===openDesign.name) $('#saveName').value = openDesign.name+' copy'; saveDesign(true); });
+$('#saveName').addEventListener('keydown', e => { if(e.key==='Enter'){ e.preventDefault(); saveDesign(false); } });
+$('#newDesignBtn').addEventListener('click', () => {
+  const {W,H} = dims();
+  S = {orient:'tall', lenMm:SQUARE_MM, border:'none', els:[]}; selId = null;
+  openDesign = {id:null, name:''};
+  fitView(); syncUI(true); render(); commit(); syncSaveUI(); drawSaved(); showTab('text');
+  toast('Started a new label. Undo brings back the old one.');
+});
+$('#backupBtn').addEventListener('click', async () => {
+  await refreshSaved();
+  if(!savedList.length){ toast('Save a design first, then download a backup.'); return; }
+  const blob = new Blob([JSON.stringify({app:'sticker-studio', version:1, designs:savedList})], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  const t = new Date(), pad = n => String(n).padStart(2,'0');
+  a.download = `sticker-studio-backup-${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}.json`;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  toast(`Backup with ${savedList.length} design${savedList.length>1?'s':''} saved to your Downloads.`, 4000);
+});
+$('#restoreIn').addEventListener('change', e => {
+  const f = e.target.files && e.target.files[0]; if(!f) return; e.target.value = '';
+  const r = new FileReader();
+  r.onload = async () => {
+    try{
+      const data = JSON.parse(r.result);
+      if(!data || !Array.isArray(data.designs)) throw new Error('bad');
+      let n = 0;
+      for(const d of data.designs){ if(d && d.id && d.design && d.thumb){ await DB.put(d); n++; } }
+      await refreshSaved(); syncSaveUI();
+      toast(`Restored ${n} design${n===1?'':'s'}.`);
+    }catch(err){ toast('That file is not a Sticker Studio backup.', 4000); }
+  };
+  r.readAsText(f);
+});
+$$('.tab').forEach(t => t.addEventListener('click', () => { if(t.dataset.tab==='saved'){ syncSaveUI(); refreshSaved(); } }));
+
 /* ---------- start ---------- */
 let needSquare = false;
+let openDesign = {id:null, name:''};
 function load(){
   try{
     const raw = localStorage.getItem(STORE); if(!raw) return false;
@@ -1309,6 +1500,7 @@ function load(){
     const mig = o => { if(o.frame==='invert'){ o.frame='none'; o.bg='round'; o.color='white'; } if(!o.color) o.color='black'; if(!o.bg) o.bg='none'; };
     S.els.forEach(e => { if(e.type==='text') mig(e); }); mig(textDefaults);
     if(!d.v) needSquare = true;
+    if(d.openId) openDesign = {id:d.openId, name:d.openName||''};
     return true;
   }catch(e){ return false; }
 }
@@ -1324,6 +1516,7 @@ if(document.fonts) document.fonts.ready.then(() => { cache.clear(); render(); })
 window.addEventListener('resize', () => { fitView(); schedule(); });
 if(window.ResizeObserver) new ResizeObserver(() => fitView()).observe($('#stage'));
 if(needSquare) setDims('tall', SQUARE_MM);
+refreshSaved().then(syncSaveUI);
 // While the keyboard is up, shrink the tool area so the label stays in view.
 const isTyping = t => t && (t.tagName==='TEXTAREA' || (t.tagName==='INPUT' && t.type==='text'));
 document.addEventListener('focusin', e => { if(isTyping(e.target)){ document.body.classList.add('typing'); setTimeout(() => e.target.scrollIntoView({block:'nearest'}), 250); } });
